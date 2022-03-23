@@ -1,0 +1,101 @@
+---
+title: "BIOST 515/518 Homework 7"
+author: "Lan Shui"
+date: "03/09/2022"
+output:
+  pdf_document
+---
+
+```{r setup, include=FALSE}
+### Setting up the packages
+library(knitr)
+library(tidyverse)
+library(ggplot2)
+library(rigr)
+library(survival)
+library(survminer)
+library(magrittr)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, include=F}
+### -----------------------------------------------------------
+### Reading in the data. 
+thiotepa <- read_csv("thiotepa.csv")
+```
+
+# Responses 
+
+## 1.
+```{r Q1, echo=F, fig.width=5, fig.height=5, fig.cap="Kaplan-Meier curves for the placebo and thiotepa arms"}
+### -----------------------------------------------------------
+### Q1
+tte <- thiotepa %>% with(Surv(stop, event))
+thiotepa %<>% mutate(treatment = ifelse(rx == 1, "Placebo", "Thiotepa"))
+
+survfit(tte ~ treatment, thiotepa) %>%
+  ggsurvplot(data = thiotepa, conf.int=T, xlab = "Time (months)",
+             ylab = "Estimated\nsurvival function",
+             palette = c("#2E9FDF", "darkgreen"))
+
+```
+
+From Figure 1, regardless of the confidence interval, we can see approximately before month 5, the survival function doesn't differ much between placebo and thiotepa arms. But approximately after month 5, the survival function for thiotepa arm is constantly larger than that of placebo arm.
+
+## 2.
+
+```{r Q2, include=F}
+### -----------------------------------------------------------
+### Q2
+survdiff(tte~treatment, data=thiotepa)
+```
+
+We performed a log-rank test on the null hypothesis of equal survival in the two arms. The result shows we cannot reject this null hypothesis with p-value=0.2.
+
+## 3.
+```{r Q3, include=F}
+### -----------------------------------------------------------
+### Q3
+thiotepa %<>% mutate(treatInd = ifelse(rx == 2, 1, 0))
+mod.cox<-coxph(tte ~ treatInd, data = thiotepa)
+mod.cox %>% 
+  confint %>% exp %>% round(4)
+```
+
+We here fit a Cox proportional hazards model with treatment arm as the predictor. The fitted model is
+$$
+\widehat{\log \frac{h_i(t)}{h_0(t)}}=-0.37*\boldsymbol{1}_{[treatment_i:thiotepa]}
+$$
+, where $h_i(t)$ is the hazard of relapse for a population member i, $h_0(t)$ is the baseline hazard which is the hazard of relapse for a population member within placebo group, and $\boldsymbol{1}_{[treatment_i:thiotepa]}$ is the indicator of the treatment being thiotepa. From the fitted results, we estimate that the hazard of relapse for the thiotepa group is e^-0.37=0.69 times of the hazard of relapse for the placebo group (95% CI for hazard ratio: 0.38 – 1.25).
+
+## 4.
+Based on the data of a clinical trial to investigate various treatments which include thiotepa to prevent the recurrence of bladder cancer, we assumed the hazards between placebo and thiotepa arms are proportional. We fit a Cox proportional hazards model with treatment arm as the predictor. As a result, we estimate that the hazard of relapse for the thiotepa group is e^-0.37=0.69 times of the hazard of relapse for the placebo group (95% CI for hazard ratio: 0.38 – 1.25). And we cannot reject the null hypothesis that the hazard of relapse for the thiotepa group is equal to the hazard of relapse for the placebo group (LRT p-value=0.22).
+
+## 5.
+Yes, the null hypotheses that you tested in Q2 and Q4 is the same. Because survival function can be derived uniquely from hazard function and vise verso. Due to this one to one mapping between survival function and hazard function, when we want to test the null hypotheses that the survival for two groups are equal, it is exactly the same when we want to test the null hypotheses that the hazard for two groups are equal.
+
+## 6.
+```{r Q6, include=F}
+### -----------------------------------------------------------
+### Q6
+thiotepa %<>% mutate(size_rescale = size-1) # rescale the size to change the baseline hazard population
+mod.cox2<-coxph(tte ~ treatInd+size_rescale, data = thiotepa) 
+mod.cox2
+mod.cox2 %>% 
+  confint %>% exp %>% round(4)
+```
+We here fit a Cox proportional hazards model with treatment arm and size of largest initial tumor as the predictors. The fitted model is 
+$$
+\widehat{\log \frac{h_i(t)}{h_0(t)}}=-0.37*\boldsymbol{1}_{[treatment_i:thiotepa]}+0.03*size_i
+$$
+, where $h_i(t)$ is the hazard of relapse for a population member i, $h_0(t)$ is the baseline hazard which is the hazard of relapse for a population member whose largest size of initial tumor being 1 cm and takes the placebo, $size_i$ is the size of largest initial tumor for a population member i and $\boldsymbol{1}_{[treatment_i:thiotepa]}$ is the indicator of the treatment being thiotepa. From the fitted results, we estimate that the hazard of relapse for the thiotepa group is e^-0.37=0.69 times of the hazard of relapse for the placebo group after adjusting the largest size of initial tumor (95% CI for hazard ratio: 0.38 – 1.25). When comparing populations whose largest size of initial tumor differs by 1 cm and within the same treatment group, we estimate that the hazard of relapse is e^0.03=1.03 times greater for populations with the greater size of the largest initial tumor (95% CI for hazard ratio: 0.84 – 1.25).
+
+## 7.
+The size of the largest tumor (pre-treatment) is not a confounder. For the definition of a confounder, it should be (1) causally associated with the outcome; (2) associated with the predictor of interest; (3) not in the causal pathway of interest. In our study, patients were randomly assigned to a treatment arm. Therefore, treatment arm is not associated with the size of the largest tumor which is a pre-treatment measure. And this violates the second requirement of the definition. Here the size of the largest tumor (pre-treatment) is a precision variable.
+
+\pagebreak
+
+## Code Appendix
+
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```

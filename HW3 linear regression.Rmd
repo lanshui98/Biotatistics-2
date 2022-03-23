@@ -1,0 +1,123 @@
+---
+title: "BIOST 515/518 Homework 3"
+author: "Lan Shui"
+date: "01/23/2022"
+output:
+  pdf_document
+---
+
+
+```{r setup, include=FALSE}
+### Setting up the packages
+library(knitr)
+library(tidyverse)
+library(ggplot2)
+library(rigr)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, include=F}
+### -----------------------------------------------------------
+### Reading in the data. 
+mri <- read_csv("mri.csv")
+```
+
+# Responses 
+
+## 1.
+
+```{r Q1, echo=F}
+### -----------------------------------------------------------
+### Q1
+mri$BMI <- mri$weight * 0.4536 / (mri$height/100)^2
+mri$sex_num <- NA
+mri[mri$sex=="Female",]$sex_num<-0
+mri[mri$sex=="Male",]$sex_num<-1
+tab1 <- mri %>% select(crt, age, BMI,sex_num) %>% descrip()
+tab1 <- tab1[, 1:9]
+tab1 <- data.frame(tab1[, c("N", "Msng", "Mean", "Std Dev", " Min", " Max")])
+names(tab1) <- c("N", "Msng", "Mean", "Std Dev", "Min", "Max")
+tab1 <- tab1 %>% mutate(Mean = as.character(round(Mean, 1)),
+                        `Std Dev` = as.character(round(`Std Dev`, 1)),
+                        `Min` = as.character(round(`Min`, 1)),
+                        `Max` = as.character(round(`Max`, 1)))
+rownames(tab1) <- c("Creatinine levels(mg/dl)", "Age (years)","BMI (kg/m^2)","sex")
+# delete values we don't need for a binary variable
+tab1$`Std Dev`[4] <- "---"
+tab1$`Min`[4] <- "---"
+tab1$`Max`[4] <- "---"
+knitr::kable(tab1,booktabs=TRUE,format = "markdown",
+             caption = "Descriptive statistics for creatinine levels age, BMI and sex in the mri dataset")
+```
+
+Body Mass Index or BMI is a simple calculation using a person's height and weight. The formula is BMI = kg/m^2 where kg is a person's weight in kilograms and m^2 is their height in metres squared. In the mri dataset, 369 females and 366 males were included. We will mainly focus on four variables in this dataset: creatinine levels (0.5~4.0 mg/dl) with mean being 1.064 mg/dl, age (65~99 years old) with mean being 74.57 years old, BMI(14.5~46.59 kg/m^2) with mean being 26.34 kg/m^2.
+
+## 2.
+### 2a.
+
+```{r Q2a, echo=F, fig.width=5, fig.height=5, fig.cap="Scatterplot of creatinine levels versus BMI"}
+### -----------------------------------------------------------
+### Q2
+#remove 2 rows containing missing values of crt
+p<-ggplot(mri, aes(x = BMI, y = crt, colour = factor(sex))) +
+geom_point(alpha = .5,na.rm=TRUE) +
+xlab("BMI (kg/m^2)") +
+ylab("creatinine levels (mg/dl)") +
+theme_bw() +
+stat_smooth(method = "loess", formula = y ~ x, se = FALSE,na.rm=TRUE)
+p
+```
+
+From the boxplot, we can see the overall creatinine levels are higher in males than females. But there seems no obvious linear relationship between creatinine levels and BMI for each sex.
+
+### 2b.
+
+```{r Q2b, include=F}
+mri_lm_robust <- regress("mean", crt ~ sex, data = mri)
+mri_lm_robust %>% coef
+```
+
+Based on a simple linear model with creatinine levels as the response and sex as the predictor, we estimate that the difference in mean creatinine levels for two sex groups is 0.27 mg/dl, with the male group having higher creatinine levels (95% CI based on heteroscedasticity-robust standard errors: 0.23 - 0.31 mg/dl). This difference is significantly different from zero (p < 0.001), so we reject the null hypothesis that there is no linear trend in the expected value of creatinine levels as a function of sex.
+
+### 2c.
+
+```{r Q2c, include=F}
+mri_lm_robust2 <- regress("mean", crt ~ BMI, data = mri)
+mri_lm_robust2 %>% coef
+```
+
+Based on a simple linear model with creatinine levels as the response and BMI as the predictor, we estimate that the difference in mean creatinine levels for two groups differing by 1 kg/m^2 in BMI value is 0.0032 mg/dl. The group with higher BMI have higher creatinine levels (95% CI based on heteroscedasticity-robust standard errors: -0.0030 ~ 0.0094 mg/dl). This difference is not significantly different from zero (p = 0.3), so we cannot reject the null hypothesis that there is no linear trend in the expected value of creatinine levels as a function of BMI.
+
+### 2d.
+
+```{r Q2d, include=F}
+mri_lm_robust3 <- regress("mean", crt ~ BMI+sex, data = mri)
+mri_lm_robust3 %>% coef
+```
+
+Based on a multiple linear regression with creatinine levels as the response, BMI and sex as the predictors, we estimate that the difference in mean creatinine levels for two groups of same sex differing by 1 kg/m^2 in BMI value is 0.0038 mg/dl. The group with higher BMI have higher creatinine levels (95% CI based on heteroscedasticity-robust standard errors: -0.0019 ~ 0.0096 mg/dl). This difference is not significantly different from zero (p = 0.19), so we cannot reject the null hypothesis that there is no linear trend in the expected value of creatinine levels as a function of BMI after adjustment for sex.
+
+### 2e.
+The models I built in c and d are different. And both of scientific interpretation and numerical estimation of the coefficient of BMI are different in these two models. But in this case, even after adjustment for sex, we cannot reject the null hypothesis that there is no linear trend in the expected value of creatinine levels as a function of BMI.
+
+## 3.
+### 3a.
+```{r Q3, include=F}
+mri_lm_robust4 <- regress("mean", crt ~ BMI+sex+age, data = mri)
+mri_lm_robust4 %>% coef
+```
+The fitted model is: for male group, $\hat{crt}|(age,BMI) = 0.3545 + 0.0058* age + 0.0054* BMI$ ,and for female group, $\hat{crt}|(age,BMI) = 0.6227 + 0.0058* age + 0.0054* BMI$, where age is in years and BMI is in kg/m^2.
+
+
+### 3b.
+The interpretation of the intercept term in the multiple linear regression model is the expected creatinine level of female at age 0 and BMI being 0 is 0.35 mg/dl (95% CI based on heteroscedasticity-robust standard errors: 0.02 ~ 0.69 mg/dl), which has no scientific meaning.
+
+### 3c.
+Based on a multiple linear regression with creatinine levels as the response and the variables age, sex, and BMI as predictors, we estimate that the difference in mean creatinine levels for two groups of same sex and age differing by 1 kg/m^2 in BMI value is 0.0054 mg/dl and the group with higher BMI have higher creatinine levels (95% CI based on robust standard errors: -0.00006 ~ 0.011 mg/dl). The difference in mean creatinine levels for two groups of same sex and BMI differing by 1 year in age is 0.0058 mg/dl and the older group have higher creatinine levels (95% CI based on robust standard errors: 0.0014 ~ 0.0102 mg/dl). The difference in mean creatinine levels for two sex groups is 0.27 mg/dl and the male group have higher creatinine levels (95% CI based on robust standard errors: 0.23 ~ 0.31 mg/dl). And we have strong evidence for a first order linear trend of creatinine levels associated with sex among those with the same age and BMI (p < 0.001), strong evidence for a first order linear trend of creatinine levels associated with age among those with the same sex and BMI (p < 0.01), but no evidence for first order linear trend in the relationship between creatinine levels and BMI among those with the same sex and age (p = 0.053).
+
+\pagebreak
+
+## Code Appendix
+
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```

@@ -1,0 +1,124 @@
+---
+title: "BIOST 515/518 Homework 5"
+author: "Lan Shui"
+date: "02/23/2022"
+output:
+  pdf_document
+---
+
+```{r setup, include=FALSE}
+### Setting up the packages
+library(knitr)
+library(tidyverse)
+library(ggplot2)
+library(rigr)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, include=F}
+### -----------------------------------------------------------
+### Reading in the data. 
+mri <- read_csv("mri.csv")
+```
+
+# Responses 
+
+## 1.
+```{r Q1, include=F}
+### -----------------------------------------------------------
+### Q1
+mri_data<-mri %>% 
+  select(death,packyrs,crt,age,sex,race)
+mri_data %>% summary # there are missing values in packyrs and crt
+mri_data<-mri_data %>%
+  filter(!is.na(packyrs),!is.na(crt)) # exclude rows that contain missing values
+mri_data<-mri_data %>%
+  mutate(smoker=ifelse(packyrs==0,0,1))
+mri_data %>% summary # look at basic structure of data set
+mri_data$sex %>% table
+mri_data$race %>% table
+mri_data$race <- relevel(as.factor(mri_data$race),ref="White") # change the reference group to White
+fit<-regress("odds", death ~ smoker+crt+age+sex+race, data = mri_data)
+fit %>%
+  coef %>% round(3)
+```
+The fitted model is $$\hat{log(odds(death))}|(smoker,creatinine,age,sexMale,raceBlack,raceOther,raceAsian) =$$ $$-9.47+0.31*smoker+1.39*creatinine+0.08*age+0.31*sexMale+0.28*raceAsian+0.25*raceBlack+0.39*raceOther$$, where $\hat{log(odds(death))}$ is the fitted value of log odds of $death$ where $death$=1 when the participate was observed to die while on study and 0 otherwise, $smoker$ =1 for a participant who has smoking history and 0 for a participant who never smoked, $creatinine$ is the measure of creatinine in mg/dl, $age$ is the age in year, $sexMale$=1 for male and 0 for female, $raceBlack$=1 for a participant whose race being black and 0 otherwise, $raceAsian$=1 for a participant whose race being Asian and 0 otherwise, $raceOther$=1 for a participant who did not identify as White, Black or Asian and 0 otherwise.
+
+## 2.
+```{r Q2, include=F}
+### -----------------------------------------------------------
+### Q2
+#smoker
+anova1<-anova(glm(death ~ crt+age+sex+race, data=mri_data, family="binomial"),
+      glm(death ~ smoker+crt+age+sex+race, data=mri_data, family="binomial"),
+      test="Rao")
+anova1
+#crt
+anova2<-anova(glm(death ~ smoker+age+sex+race, data=mri_data, family="binomial"),
+      glm(death ~ smoker+crt+age+sex+race, data=mri_data, family="binomial"),
+      test="Rao")
+anova2
+#age
+anova3<-anova(glm(death ~ smoker+crt+sex+race, data=mri_data, family="binomial"),
+      glm(death ~ smoker+crt+age+sex+race, data=mri_data, family="binomial"),
+      test="Rao")
+anova3
+#sexMale
+anova4<-anova(glm(death ~ smoker+crt+age+race, data=mri_data, family="binomial"),
+      glm(death ~ smoker+crt+age+sex+race, data=mri_data, family="binomial"),
+      test="Rao")
+anova4
+#race
+anova5<-anova(glm(death ~ smoker+crt+age+sex, data=mri_data, family="binomial"),
+      glm(death ~ smoker+crt+age+sex+race, data=mri_data, family="binomial"),
+      test="Rao")
+anova5
+```
+The whole data set was collected from a government sponsored cohort study of adults aged 65 years and older which was conducted to observe the incidence of cardiovascular disease and cerebrovascular disease in the elderly over an 11 year period. In this study, we use this data set to find the association between all-cause mortality and creatinine, age, smoking history, sex, and race. Initially the data cleaning process is performed on the data
+set to remove any missing values on these variables. Then we fit a logistic regression model with death (an indicator of death within the duration of the study) as response variable and creatinine, age, an indicator of whether the participant ever smoked, sex, and race as predictors. Then five anova tests are conducted separately for each predictor to make inference on the associations.
+
+The results that logistic regression model generates are shown in Table 1.
+
+```{r Q2a, echo=F}
+tab1<-fit$coefficients %>% round(2) %>%
+  (function(x) x[,c(4:6,8)]) %>% as.matrix() %>%
+  (function(x){ colnames(x) <-
+    c("e(Est)","e(95%L)","e(95%H)","p-value");
+  return(x)}) %>%
+  (function(x){ rownames(x) <-
+    c("(Intercept)","smoker","creatinine","age","sexMale","raceAsian","raceBlack","raceOther");
+  return(x)})
+  knitr::kable(tab1,booktabs=TRUE,format = "markdown",
+             caption = "Values from logistic regression model fit")
+```
+From the Table 1, it is estimated that the odds of death occurring during the study is 1.4 times greater for a population who smokes compared to a population of the same sex, age, creatinine level and race category who does not smoke (95% robust Wald CI for odds ratio: 0.89, 2.10). Using a Rao test we cannot reject the null hypothesis that there is no difference in the odds of death occurring when comparing these two populations (p = 0.147).
+
+Then, for the association between all-cause mortality and creatinine level, we estimate that the odds of death occurring during the study is 4.0 times greater for a population whose creatinine level is 1 mg/dl larger than a population of the same sex, age, smoking history and race category (95% robust Wald CI for odds ratio: 2.01, 8.01). Using a Rao test we conclude that there is a significant difference in the odds of death occurring when comparing these two populations (p < 0.001).
+
+For the association between all-cause mortality and age, we estimate that the odds of death occurring during the study is 1.1 times greater for a population whose age is 1 year older than a population of the same sex, creatinine level, smoking history and race category (95% robust Wald CI for odds ratio: 1.04, 1.12). Using a Rao test we conclude that there is a significant difference in the odds of death occurring when comparing these two populations (p < 0.001).
+
+Then, in terms of the association between all-cause mortality and sex, we estimate that the odds of death occurring during the study is 1.4 times greater for a male group compared to a female group of the same age, creatinine level, smoking history and race category (95% robust Wald CI for odds ratio: 0.88, 2.10). Using a Rao test we cannot reject the null hypothesis that there is no difference in the odds of death occurring when comparing these two groups (p = 0.168).
+
+Finally, for race, we estimate that the odds of death occurring during the study is 1.3 times larger for Asian group compared to White group of the same age, creatinine level, smoking history and sex (95% robust Wald CI for odds ratio: 0.60, 2.93). The same estimation is 1.3 times larger for Black group compared to White group of the same age, creatinine level, smoking history and sex (95% robust Wald CI for odds ratio: 0.74, 2.22) and 1.5 times larger for group not identified as White, Black or Asian compared to White group of the same age, creatinine level, smoking history and sex (95% robust Wald CI for odds ratio: 0.36, 6.06). We cannot reject the null hypothesis that there is no difference in the odds of death among groups with same age, creatinine level, smoking history and sex but have different race (p = 0.71) based on a Rao test.
+
+## 3.
+It is surprising to find that the odds of death occurring is 1.4 times greater for male compared to female under the adjustment of age, creatinine, smoking history and race, though this difference is not significant under a Rao test. From previous analysis, it was stated that the average lifespan is about 5 years longer for women than men in the U.S., and about 7 years longer worldwide (MD, 2016). And this survival gap between men and women is again found in this study. One may propose it could be that more men than women smoke, but as we can see in this study, the difference is still significant after controlling whether the participant ever smoked. Therefore, in order to help men live longer, additional causal factors need to be found.
+There are two limitations of this study. One is that we assume the linear relationship between log-odd of death occurring and five predictors without considering any possible interaction. The other is that we only perform anova on the null hypothesis that there is no difference of odds of death among all four race categories. Additional analysis is required for diving into any two race categories.
+
+## 4.
+The sample odds ratio for disease given exposure is $$\frac{Pr(y=1|x=1)/Pr(y=0|x=1)}{Pr(y=1|x=0)/Pr(y=0|x=0)}=\frac{ad}{bc}$$
+The sample odds ratio for exposure given disease is $$\frac{Pr(x=1|y=1)/Pr(x=0|y=1)}{Pr(x=1|y=0)/Pr(x=0|y=0)}=\frac{ad}{bc}$$
+
+## 5.
+By Baye’s theorem, which is $$P(A|B)=\frac{P(B|A)*P(A)}{P(B)}$$
+we can get $$\frac{Pr(y=1|x=1)/Pr(y=0|x=1)}{Pr(y=1|x=0)/Pr(y=0|x=0)}$$
+$$=\frac{\frac{Pr(x=1|y=1)*Pr(y=1)/Pr(x=1)}{Pr(x=1|y=0)*Pr(y=0)/Pr(x=1)}}{\frac{Pr(x=0|y=1)*Pr(y=1)/Pr(x=0)}{Pr(x=0|y=0)*Pr(y=0)/Pr(x=0)}}$$
+$$=\frac{Pr(x=1|y=1)/Pr(x=0|y=1)}{Pr(x=1|y=0)/Pr(x=0|y=0)}$$
+Therefore, the true odds ratio for disease given exposure equals the true odds ratio for exposure given disease.
+
+\pagebreak
+
+## Code Appendix
+
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```

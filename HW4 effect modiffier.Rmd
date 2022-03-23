@@ -1,0 +1,96 @@
+---
+title: "BIOST 515/518 Homework 4"
+author: "Lan Shui"
+date: "02/16/2022"
+output:
+  pdf_document
+---
+
+```{r setup, include=FALSE}
+### Setting up the packages
+library(knitr)
+library(tidyverse)
+library(ggplot2)
+library(rigr)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, include=F}
+### -----------------------------------------------------------
+### Reading in the data. 
+smsa <- read_csv("smsa.csv")
+```
+
+# Responses 
+
+## 1.
+Age-adjusted-mortality or age-standardized mortality is a death rate that controls for the effects of differences in population age distributions. It is a weighted average with each age-specific mortality rate weighted by the proportion of people in the same age group in the standard population.
+
+## 2.
+```{r Q2, echo=F, fig.width=5, fig.height=5, fig.cap="Scatterplot of age-adjusted mortality against log(NOx)"}
+### -----------------------------------------------------------
+### Q2
+smsa %>%
+  ggplot(aes(x=log(NOxPot),y=Mortality))+
+  geom_point()+
+  labs(y="Total age-adjusted all-cause mortality rate\n(deaths per 100,000 residents)",
+       x="Nitrous Oxide pollution potential")
+```
+
+In Figure 1 we observe an increasing relationship between age-adjusted mortality and log(NOx): the age-adjusted mortality appears to increase as log(NOx) increases. But there are some outliers with high level of log(NOx) but low age-adjusted mortality.
+
+## 3.
+```{r Q3, include=F}
+### -----------------------------------------------------------
+### Q3
+smsa_lm_robust <- regress("mean", Mortality ~ log(NOxPot), data = smsa)
+smsa_lm_robust %>% coef
+```
+
+We fit a simple linear regression model (using robust standard errors) with log(NOx) as the predictor and age-adjusted mortality as the response. We estimate that the difference in mean age-adjusted mortality for two cities differing by one log-pollution potential in log(NOx) is 15.10 deaths per 100,000 residents.The city with higher level of log(NOx) has higher age-adjusted mortality (95% CI: -0.88, 31.08). Furthermore, we estimate the expected age-adjusted mortality in city with log(NOx) being 0 is 905.61 deaths per 100,000 residents, although this is not an interpolation. We fail to reject the null hypothesis that there is a first-order linear trend in mean age-adjusted mortality by log(NOx) (p = 0.06).
+
+## 4.
+```{r Q4, echo=F, fig.width=5, fig.height=5, fig.cap="Scatterplot of age-adjusted mortality against log(NOx) stratified by rainfull where blue points refer to low rainfall"}
+### -----------------------------------------------------------
+### Q4
+smsa$low_rainfall<-ifelse(smsa$Rain<20,1,0)
+fit_lm2 <- predict(lm(Mortality ~ low_rainfall * log(NOxPot), data = smsa))
+smsa %>%
+  ggplot(aes(x=log(NOxPot),y=Mortality,col=as.factor(low_rainfall)))+
+  geom_point()+
+  geom_line(aes(y = fit_lm2), lwd = 1)+
+  labs(y="Total age-adjusted all-cause mortality rate\n(deaths per 100,000 residents)",
+       x="Nitrous Oxide pollution potential")
+```
+
+We think rainfull is a effect modifier. First, it is not associated with the predictor of interest which is nitrous Oxide pollution potential in this case, thus it is not a confounder. Then, from Figure 2, it seems the association between nitrous Oxide pollution potential and age-adjusted mortality is different for the city being low rainfall or not which is the definition of effect modifiers. And we don't whether is low rainfall is associated with age-adjusted mortality. Therefore, it couldn't be a precision variable.
+
+## 5.
+```{r Q5, include=F}
+### -----------------------------------------------------------
+### Q5
+smsa_lm_robust2 <- regress("mean", Mortality ~ log(NOxPot)*low_rainfall, data = smsa)
+smsa_lm_robust2 %>% coef
+```
+
+We fit a multiple linear regression model based on robust standard error for age-adjusted mortality, including log(NOx), low rainfall indicator, and an interaction between these two variables as predictors. The fitted model is $$\hat{Mortality}|(log(NOx),low rainfall) = 874.49 + 34.49* log(NOx) - 56.55* low rainfall - 25.51*log(NOx)*lowrainfall $$, where $\hat{Mortality}$ is fitted value of age-adjusted mortality in deaths per 100,000 residents, $log(NOx)$ is the log of itrous Oxide pollution potential in log-pollution potential, $lowrainfull$ =1 for a city being low rainfall, 0 otherwise.
+We estimate that when comparing cities that differ in log(NOx) by 1 log-pollution potential, the difference in mean age-adjusted mortality between two low rainfall cities would be 25.51 deaths per 100,000 residents lower than the difference in mean age-adjusted mortality between two cities being not low rainfall. For cities differing in log(NOx) by 1 log-pollution potential but are in the same rainfall category, we estimate that the city with higher log(NOx) has mean age-adjusted mortality that is 34.49 deaths per 100,000 residents higher. We also estimate that the mean age-adjusted mortality of low rainfall city is 56.55 deaths per 100,000 residents lower than city being not low rainfall. And the mean age-adjusted mortality for a city being not low rainfall with log(NOx) being 0 is 874.49 deaths per 100,000 residents, which is though an extrapolation.
+
+## 6.
+From the multiple linear regression fitted in Q5, we fail to reject the null hypothesis that the difference in mean age-adjusted mortality for cities who differ in log(NOx) by one log-pollution potential is equal for being low rainfall and not (95% CI for difference in differences based on robust standard errors: (-51.15,  0.14); p=0.051). We can also conclude that we have evidence of first order linear associations between age-adjusted mortality and log(NOx) (p<0.001), but not low rainfall indicator (p=0.33) (controlling for the other variables for each association).
+
+## 7.
+I cannot conclude that there is a causal effect of nitrous oxide pollution on mortality so far because we haven't roll out any possible confounding variables.
+
+## 8.
+The fitted value of age-adjusted mortality in Los Angeles follows this formula: $$\hat{Mortality}|(log(NOx)) = 817.94 + 8.98* log(NOx)$$, where $\hat{Mortality}$ is fitted value of age-adjusted mortality in deaths per 100,000 residents and $log(NOx)$ is the log of itrous Oxide pollution potential in log-pollution potential. It is estimated that when the city differs in log(NOx) by 1 log-pollution potential, there are 8.98 deaths per 100,000 residents increase in age-adjusted mortality in LA.
+
+## 9.
+The fitted value of age-adjusted mortality in Seattle follows this formula: $$\hat{Mortality}|(log(NOx)) = 874.49 + 34.49* log(NOx)$$, where $\hat{Mortality}$ is fitted value of age-adjusted mortality in deaths per 100,000 residents and $log(NOx)$ is the log of itrous Oxide pollution potential in log-pollution potential. It is estimated that when the city differs in log(NOx) by 1 log-pollution potential, there are 34.49 deaths per 100,000 residents increase in age-adjusted mortality in Seattle.
+
+\pagebreak
+
+## Code Appendix
+
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```

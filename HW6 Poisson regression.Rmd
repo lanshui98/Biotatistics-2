@@ -1,0 +1,203 @@
+---
+title: "BIOST 515/518 Homework 6"
+author: "Lan Shui"
+date: "03/02/2022"
+output:
+  pdf_document
+---
+
+```{r setup, include=FALSE}
+### Setting up the packages
+library(knitr)
+library(tidyverse)
+library(ggplot2)
+library(rigr)
+library(magrittr)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, include=F}
+### -----------------------------------------------------------
+### Reading in the data. 
+wonder <- read_csv("cdc-wonder-wa.csv")
+```
+
+# Responses 
+
+## 1.
+```{r Q1pre, include=F}
+wonder %>% summary # look at basic structure of data set
+wonder<-wonder %>%
+  mutate(mortality_rate=deaths/pop)
+```
+
+```{r Q1, echo=F, fig.width=5, fig.height=5, fig.cap="Log county-level mortality rates against time stratified by age"}
+### -----------------------------------------------------------
+### Q1
+# in order to visually enlarge the difference between age groups, 
+# we take a log transformation on mortality rate
+wonder %>%
+  ggplot(aes(x=as.factor(year),y=log(mortality_rate)))+
+  geom_point(aes(col=age))+
+  labs(y="log county-level mortality rates",
+       x="time (Year)")
+```
+
+From Figure 1, we can see that there is no obvious association between the county-level mortality rates and time. And we observe that the age group with higher age tend to have higher mortality rates.
+
+```{r Q1a, include=F}
+wonder_age1<-wonder %>%
+  filter(age=="55-64 years")
+q1<-wonder_age1 %>%
+  ggplot(aes(as.factor(x=year),y=log(mortality_rate),col=gender))+
+  geom_point()+
+  labs(y="log county-level mortality rates",
+       x="time (Year)")+
+  ggtitle("55-64 years old group")+
+  theme(axis.title = element_text(size = 8))+
+  theme(plot.title = element_text(size = 10))+
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+```{r Q1b, include=F}
+wonder_age2<-wonder %>%
+  filter(age=="65-74 years")
+q2<-wonder_age2 %>%
+  ggplot(aes(as.factor(x=year),y=log(mortality_rate),col=gender))+
+  geom_point()+
+  labs(y="log county-level mortality rates",
+       x="time (Year)")+
+  ggtitle("65-74 years old group")+
+  theme(axis.title = element_text(size = 8))+
+  theme(plot.title = element_text(size = 10))+
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+```{r Q1c, include=F}
+wonder_age3<-wonder %>%
+  filter(age=="75-84 years")
+q3<-wonder_age3 %>%
+  ggplot(aes(as.factor(x=year),y=log(mortality_rate),col=gender))+
+  geom_point()+
+  labs(y="log county-level mortality rates",
+       x="time (Year)")+
+  ggtitle("75-84 years old group")+
+  theme(axis.title = element_text(size = 8))+
+  theme(plot.title = element_text(size = 10))+
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+```{r Q1d, echo=F,fig.width=5, fig.height=5, fig.cap="Log county-level mortality rates against time stratified by gender"}
+wonder_age4<-wonder %>%
+  filter(age=="85+ years")
+q4<-wonder_age4 %>%
+  ggplot(aes(as.factor(x=year),y=log(mortality_rate),col=gender))+
+  geom_point()+
+  labs(y="log county-level mortality rates",
+       x="time (Year)")+
+  ggtitle("85+ years old group")+
+  theme(axis.title = element_text(size = 8))+
+  theme(plot.title = element_text(size = 10))+
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+ggpubr::ggarrange(q1, q2, q3, q4, nrow = 2, ncol = 2, widths=c(1, 1), legend="bottom", common.legend=T)
+```
+
+From Figure 2, we can see the male group tend to have higher mortality rates than female group after adjusting for the age group.
+
+```{r Q1e, echo=F,fig.width=5, fig.height=5, fig.cap="County-level deaths versus county-level population"}
+wonder %>%
+  ggplot(aes(x=pop,y=deaths,col=age,shape=gender))+
+  geom_point()+
+  labs(y="county-level deaths in 2015",
+       x="county-level population in 2015")
+```
+
+From Figure 3, we observe a linear trend between county-level deaths and county-level population after stratifying age groups and gender. That is, within the same age and sex group, a county with more population tends to own more deaths per year.
+
+## 2.
+```{r Q2, include=F}
+### -----------------------------------------------------------
+### Q2
+wonder<-wonder %>%
+  mutate(year_new=as.numeric(year)-2010)
+rigr::regress("rate",
+              deaths~age+gender+year_new,
+              data=wonder,
+              offset=log(pop))
+```
+To model how county-level mortality rates vary over time and
+are associated with gender and age, we fit a Poisson regression, which includes 4 levels age groups, year and gender as predictors, deaths over population size in that county as response. (Here, we decided not to consider the county variable, since in this small study, difference in mortality rates among counties is not what we want to investigate) The fitted model is 
+$$
+log(\hat{mortalityRate}) = -5.02 + 0.76*\boldsymbol{1}_{[65-74 years]} + 1.77*\boldsymbol{1}_{[75-84 years]} + 2.95*\boldsymbol{1}_{[85+ years]} +
+$$
+$$
+0.29*\boldsymbol{1}_{[Male]}-0.004*year
+$$
+where $log(\hat{mortalityRate})$ is log of fitted value of county-level mortality rate, $\boldsymbol{1}_{[65-74 years]}$ is the indicator of participate being 65-74 years old, $\boldsymbol{1}_{[75-84 years]}$ is the indicator of participate being 75-84 years old,  $\boldsymbol{1}_{[85+ years]}$ is the indicator of participate being 85+ years old, $boldsymbol{1}_{[Male]}$ is the indicator of participate being male, $year$ is the time in years minus 2010.
+
+We estimated that the mean of county-level mortality rates in 2010 for female population aging from 55 to 64 is e^-5.02=0.007 (95% robust CI:0.0064,0.0068).
+When comparing mortality rates for the same year and gender, we estimate that the mortality rates is e^0.76=2.14 (95% robust CI:2.07-2.23) times greater in 65-74 age group compared to 55-64 age group. When comparing mortality rates for the same year and age group, we estimate that the mortality rates is e^0.29=1.33 (95% robust CI:1.31,1.36) times greater in male group compared to female group. When comparing mortality rates for two groups of the same gender and age group but differing by 1 year (i.e. one is in year Y, the other is in year Y+1), we estimate that the mortality rates of group in year Y+1 is e^-0.004=0.996 (95% robust CI:0.993,1.000) times of group in year Y.
+
+## 3.
+```{r Q3, include=F}
+### -----------------------------------------------------------
+### Q3
+# H0: there is no association between mortality rate and time
+poi_reg1<-glm(deaths~age+gender+year_new,
+              family=poisson(link="log"),
+              data=wonder,
+              offset=log(pop))
+
+poi_reg0<-glm(deaths~age+gender,
+              family=poisson(link="log"),
+              data=wonder,
+              offset=log(pop))
+anova(poi_reg0, poi_reg1, test = "LRT")
+```
+From Q2's result, we can see the mortality rates between different years after accounting for age group and gender doesn't differ much. In order to test this statistically, we perform a robust Wald test. As a result, we cannot reject the null hypotheses that age-group and gender specific mortality rates are equal for year from 2010 to 2019 (p=0.025).
+
+## 4.
+```{r Q4, include=F}
+### -----------------------------------------------------------
+### Q4
+# model with interaction term
+poi_reg2<-glm(deaths~gender+year_new*age,
+              family=poisson(link="log"),
+              data=wonder,
+              offset=log(pop))
+anova(poi_reg1, poi_reg2, test = "LRT")
+
+poi_reg3<-glm(deaths~gender*year_new+age,
+              family=poisson(link="log"),
+              data=wonder,
+              offset=log(pop))
+anova(poi_reg1, poi_reg3, test = "LRT")
+```
+To investigate whether the trends in mortality rates cross time are different for different age group. We fit a Poisson regression model with gender and the interaction between time and age groups being the predictors, mortality rate as the response. And we want to test whether this interaction is significant or not. By ANOVA, we reject the null hypotheses that there is no interaction between age and time under this poisson modeling (likelihood ratio test p < 0.0001). 
+We can see this difference in trends for mortality rates cross time for different age group in Figure 3. 
+
+And I think there might be interaction between time and gender from Figure 3. But after ANOVA, we cannot reject the null hypotheses that there is no interaction between gender and time under this poisson modeling (likelihood ratio test p=0.73).
+
+## 5.
+```{r Q5, include=F}
+### -----------------------------------------------------------
+### Q5
+x<-sort(wonder$deaths)
+length(unique(wonder$county))*10*4*2-2709
+# 10 is the number of year from 2010 to 2019, 4 is the number of age groups
+# 2 is the gender groups
+```
+The threshold for suppresses counts in 10. That is to say, any death record fewer than 10 was suppressed. We found that there are 411 rows in the dataset have been suppressed because of low counts.
+
+## 6.
+I don't think this kind of systematically data missing would influence the result of Q2 and Q4 much. Since this type of data missing is independent of gender, age and time, we can make reasonable extrapolation. However, if we are interested in the mortality rates across county, then this kind of data missing is no long independent of county (small county may have more data missing).
+
+## 7.
+Poisson regression follows the assumptions that the number of events occurring in separate intervals are independent which is however not reasonable in our above analysis. There is some correlation for the number of deaths between gender if the cause of death including STD which is the case in our study. Therefore, our model assumptions might not be correct.
+
+\pagebreak
+
+## Code Appendix
+
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```

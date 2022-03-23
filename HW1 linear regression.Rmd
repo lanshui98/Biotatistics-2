@@ -1,0 +1,80 @@
+---
+title: "BIOST 515/518 Homework 1"
+author: "Lan Shui"
+date: "01/09/2022"
+output:
+  pdf_document
+---
+
+
+```{r setup, include=FALSE}
+### Setting up the packages, options we'll need:
+library(knitr)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, include=F}
+### -----------------------------------------------------------
+### Reading in the data. 
+library(tidyverse)
+wcgs <- read_csv("wcgs.csv")
+```
+
+# Responses 
+
+### 1.
+
+```{r Q1, echo=F, fig.width=5, fig.height=5, fig.cap="Scatterplot of weight versus height"}
+### -----------------------------------------------------------
+### Q1
+plot(wcgs$height0,wcgs$weight0,xlab = "height in inches at start of study",
+     ylab = "weight in pounds at start of study")
+title("Scatterplot of weight versus height")
+```
+
+Based on the plot, I believe there is a positive linear relationship between weight and height in this population. As we can see on the scatterplot, small values of height correspond to small values of weight; large values of height correspond to large values of weight.
+
+### 2.
+
+```{r Q2, echo=F}
+### -----------------------------------------------------------
+### Q2
+### Here's the fitted SLM under the assumption of heteroscedasticity of var(weight).
+library(rigr)
+wcgs_lm_robust <- regress("mean", weight0 ~ height0, data = wcgs)
+wcgs_lm_robust %>% coef %>% round(3)
+```
+
+The estimated difference in the expected value of weight at the start of study between two populations of males employed in California differing by one inch of height is 4.446 pounds.
+
+### 3.
+As we obtained in the result in Q2, the std error of the estimate of the slope coefficient under heteroscedasticity assumption is 0.138, while under homoscedasticity assumption it is 0.126. I would prefer the heteroscedasticity-robust standard error as we are not sure if the var(response) is homoscedasticity.
+
+### 4.
+It is reasonable to use the fitted linear regression to estimate the mean weight of men from this population who are 70 inches tall but no taller than 78 inches, as this is an interpolate which is within the range of observed data.
+
+### 5.
+It is unreasonable to use the fitted linear regression to estimate the mean weight of an adolescent boy who is 42 inches tall which is an extrapolate outside the range of observed data.
+
+### 6.
+```{r Q6, echo=F}
+### -----------------------------------------------------------
+### Q6
+### Here is the fitted SLM after converting the unite of height to centimeters 
+### and same as Q2, I assumed the heteroscedasticity of var(weight).
+wcgs$height0_cm = wcgs$height0 * 2.54
+wcgs_lm_robust2 <- regress("mean", weight0 ~ height0_cm, data = wcgs)
+wcgs_lm_robust2 %>% coef %>% round(3)
+```
+
+The estimated difference in the expected value of weight at the start of study between two populations of males employed in California differing by one centimeter of height is 1.750 pounds. Actually, it is the same result as in Q2 (we could multiply 1.750 by 2.54 and get 4.446 in Q2).
+
+### 7.
+The fitted value from the SLR makes the better prediction of the weight of another 73 inch tall man from this population. As the fitted value gives the estimate of the expected value of weight at the height of 73 inches which is an attempt to infer the population by observed data.
+
+\pagebreak
+
+## Code Appendix
+
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```

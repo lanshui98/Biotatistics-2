@@ -1,0 +1,129 @@
+---
+title: "BIOST 515/518 Homework 2"
+author: "Lan Shui"
+date: "01/19/2022"
+output:
+  pdf_document
+---
+
+
+```{r setup, include=FALSE}
+### Setting up the packages
+library(knitr)
+library(tidyverse)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, include=F}
+### -----------------------------------------------------------
+### Reading in the data. 
+fev <- read_csv("fev.csv")
+```
+
+# Responses 
+
+### 1.
+
+```{r Q1, echo=F, fig.width=5, fig.height=5, fig.cap="Scatterplot of FEV versus height in 654 children"}
+### -----------------------------------------------------------
+### Q1
+plot(fev$height,fev$fev,xlab = "subject height at time of measurement (inches)", 
+     ylab = "measured FEV (liters per second)")
+l.smooth <- with(fev, lowess(height, fev, iter=0))
+lines(l.smooth, col="blue", lwd=2)
+fev_lm <- lm(fev ~ height, data=fev)
+abline(fev_lm, col=3, lwd=2)
+legend("topleft",c("Lowess smoother", "Regression line"), col=c("blue",3), lwd=2, bty="n")
+```
+
+Based on the plot, we can see there is a positive linear relationship between FEV and height for most of the range of observed heights. However, we observe some evidence of non-linearity for the shortest and tallest children.
+
+### 2.
+
+```{r Q2, include=F}
+### -----------------------------------------------------------
+### Q2
+library(rigr)
+fev_lm_robust <- regress("mean", fev ~ height, data = fev)
+fev_lm_robust %>% coef
+```
+
+Based on the simple linear regression, we estimate that the difference in the expected value of FEV between two groups of children differing by one inch in height is 0.13 l/s, with taller group having larger FEV. The 95% CI using robust standard errors is (0.125 l/s,0.139 l/s).The p-value of the hypothesis testing, where the H0 being no linear trend, is less than 0.001. The parameter estimate here is significantly different from zero. We can therefore reject the null hypothesis that there is no linear trend in the expected value of FEV across height.
+
+### 3.
+From figure 1, I do not think the relationship between height and average FEV is exactly linear but this does not conflict with part of the result in Q2. If the relationship between height and average FEV is not linear, we can still use the result of the estimated slope and intercept to describe the overall linear trend in dataset.
+
+### 4.
+```{r Q4, include=F}
+### -----------------------------------------------------------
+### Q4
+fev$log_fev<-log(fev$fev)
+fev_lm_robust2 <- regress("mean", log_fev ~ height, data = fev)
+fev_lm_robust2 %>% coef
+```
+
+Based on the simple linear regression, we estimate that the difference in the expected value of log of FEV between two groups of children differing by one inch in height is 0.052 log-l/s, with taller group having larger log(FEV). The 95% CI using robust standard errors is (0.050 log-l/s,0.054 log-l/s).
+
+### 5.
+```{r Q5, include=F}
+### -----------------------------------------------------------
+### Q5
+fev$height_above45<-fev$height-45
+fev_lm_robust3 <- regress("mean", fev ~ height_above45, data = fev)
+fev_lm_robust3 %>% coef
+```
+
+Based on the simple linear regression, we estimate that the difference in the expected value of FEV between two groups of children differing by one inch in height is 0.13 l/s, with taller group having larger FEV. The 95% CI using robust standard errors is (0.125 l/s,0.139 l/s). And we estimate the expected value of FEV at height of 45 inches is 0.51 l/s. Compared to Q2, the estimate of intercept in this model is more interpretative and has a scientific meaning.
+
+### 6.
+```{r Q6.1, echo=F, fig.width=5, fig.height=5, fig.cap="Residual plot of the model: fev=slope*height+intercept+residual"}
+### -----------------------------------------------------------
+### Q6_residual plot 1
+residual1<-fev$fev-(0.132*fev$height+0.506)
+plot(fev$height,residual1,xlab="subject height(inches)",ylab="residuals")
+```
+
+```{r Q6.2, echo=F, fig.width=5, fig.height=5, fig.cap="Residual plot of the model: log_fev=slope*height+intercept+residual"}
+### -----------------------------------------------------------
+### Q6_residual plot 2
+residual2<-fev$log_fev-(0.052*fev$height-2.271)
+plot(fev$height,residual2,xlab="subject height(inches)",ylab="residuals")
+abline(h=0,col="blue")
+```
+
+I think the model in Q4 gives a better prediction of the FEV of a 48 inch tall child. From the residual plots, we can see the points in a residual plot are randomly dispersed around the horizontal axis which means this linear regression model is appropriate for the data. And the model in Q2 systematically overestimates fev cross heights.
+
+### 7.
+
+```{r Q7, include=F}
+### -----------------------------------------------------------
+### Q7
+fev$sex_female<-NA
+fev[fev$sex=="female",]$sex_female<-1
+fev[fev$sex=="male",]$sex_female<-0
+fev_lm_robust4 <- regress("mean", fev ~ sex_female, data = fev)
+fev_lm_robust4 %>% coef
+```
+
+Based on the simple linear regression, we estimate that the difference in the expected value of FEV between males and females is 0.36 l/s, with males having larger FEV. The 95% CI using robust standard errors is (-0.490 l/s,-0.232 l/s). And the estimate of the expected value of FEV of males is 2.81 l/s.
+
+### 8.
+
+```{r Q8, include=F}
+### -----------------------------------------------------------
+### Q8
+fev$sex_male<-NA
+fev[fev$sex=="male",]$sex_male<-1
+fev[fev$sex=="female",]$sex_male<-0
+fev_lm_robust5 <- regress("mean", fev ~ sex_male, data = fev)
+fev_lm_robust5 %>% coef
+```
+
+Based on the simple linear regression, we estimate that the difference in the expected value of FEV between males and females is 0.36 l/s, with males having larger FEV. The 95% CI using robust standard errors is (0.23 l/s,0.490 l/s). And the estimate of the expected value of FEV of females is 2.45 l/s. Compared to Q7, the result is exactly the same.
+
+\pagebreak
+
+## Code Appendix
+
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
